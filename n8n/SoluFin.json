@@ -148,11 +148,11 @@
             },
             {
               "column": "monto_solicitado",
-              "value": "={{ $json.monto_solicitado_clp }}"
+              "value": "={{ $json.monto_solicitado }}"
             },
             {
               "column": "ingreso_mensual",
-              "value": "={{ $json.ingreso_mensual_clp }}"
+              "value": "={{ $json.ingreso_mensual }}"
             },
             {
               "column": "region",
@@ -161,10 +161,6 @@
             {
               "column": "estado_calidad",
               "value": "={{ $json.estado_calidad }}"
-            },
-            {
-              "column": "fuente",
-              "value": "={{ $json.canal_origen }}"
             },
             {
               "column": "observacion",
@@ -179,7 +175,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        944,
+        976,
         496
       ],
       "credentials": {
@@ -209,7 +205,7 @@
     },
     {
       "parameters": {
-        "url": "https://docs.google.com/uc?export=download&id=1LX4rAnQNYlrT4bYVqi7Z-h9Q2UGov0u-",
+        "url": "https://docs.google.com/spreadsheets/d/1367i3SS9dSnNu8G1yQcMKOBocBa-sfB5/export?format=xlsx",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -281,7 +277,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "0d2ebd39-3681-4f56-9014-5519cb9508a3",
+  "versionId": "d091c923-a654-4973-b8ed-d82e85a180f5",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "76f69fa19f0f67406fa5a8b84898ab9c6ba9f68e08549cf40d831e4e2350c812"
