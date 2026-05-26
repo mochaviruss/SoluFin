@@ -1,0 +1,291 @@
+{
+  "name": "My workflow 6",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "SQL que hay que crear antes\n\n\nCREATE TABLE solicitudes_validadas (\n  id INT,\n  rut_cliente TEXT,\n  nombre_cliente TEXT,\n  email TEXT,\n  fecha_solicitud TEXT,\n  monto_solicitado NUMERIC,\n  ingreso_mensual NUMERIC,\n  edad INT,\n  region TEXT,\n  total_cuota NUMERIC,\n  estado_calidad TEXT,\n  fuente TEXT\n);\n\nCREATE TABLE solicitudes_rechazadas (\n  id INT,\n  rut_cliente TEXT,\n  nombre_cliente TEXT,\n  email TEXT,\n  fecha_solicitud TEXT,\n  monto_solicitado TEXT,\n  ingreso_mensual TEXT,\n  edad TEXT,\n  region TEXT,\n  estado_calidad TEXT,\n  fuente TEXT,\n  observacion TEXT\n);",
+        "height": 608,
+        "width": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -192,
+        -336
+      ],
+      "typeVersion": 1,
+      "id": "1ff5bf27-8415-44d1-b3bb-32197cb31fac",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  \n  // ETAPA 2: LIMPIEZA Y TRANSFORMACIÓN (ACTUALIZADO)\n\n\n  //  1. Normalizar RUT (elimina puntos y espacios)\n  \n  let rut = String(item.json.rut_cliente || '').replace(/[.\\s]/g, '').toUpperCase().trim();\n\n  // 2. Normalizar fecha (DD/MM/YYYY → YYYY-MM-DD)\n  \n  let fecha = String(item.json.fecha_solicitud || '').trim();\n  const matchFecha = fecha.match(/^(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})$/);\n  if (matchFecha) {\n    fecha = `${matchFecha[3]}-${matchFecha[2].padStart(2,'0')}-${matchFecha[1].padStart(2,'0')}`;\n  }\n\n  // 3. Convertir valores numéricos de forma segura \n  \n  let monto = parseFloat(item.json.monto_solicitado);\n  let edad  = parseInt(item.json.edad);\n\n  // Captura el ingreso mensual aunque n8n lo detecte como Texto (String)\n  \n  let ingresoRaw = item.json.ingreso_mensual;\n  let ingreso = 0;\n\n  if (ingresoRaw !== undefined && ingresoRaw !== null && ingresoRaw !== '') {\n    // Si viene con formato de texto, elimina puntos fantasmas y convierte a número real\n    ingreso = parseFloat(String(ingresoRaw).replace(/[.\\s]/g, ''));\n  } else {\n    ingreso = 0; // Si la celda venía vacía en el Excel, le asigna 0 para evitar el NULL\n  }\n\n  // 4. Normalizar email y nombre\n  \n  let email  = String(item.json.email || '').trim().toLowerCase();\n  let nombre = String(item.json.nombre_cliente || '').trim();\n  \n  // ETAPA 3: VALIDACIÓN (6 reglas de negocio bancarias)\n  // \n  const regexFecha = /^\\d{4}-\\d{2}-\\d{2}$/;\n  const regexEmail = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n\n  const fechaValida   = regexFecha.test(fecha);\n  const emailValido   = regexEmail.test(email);\n  const montoValido   = !isNaN(monto)  && monto > 0 && monto <= 50000000;\n  const ingresoValido = !isNaN(ingreso) && ingreso > 0;\n  const edadValida    = !isNaN(edad)   && edad >= 18 && edad <= 75;\n  const rutValido     = rut.length > 0;\n\n  // Si alguna validación falla → rechazado\n  if (!fechaValida || !emailValido || !montoValido || !ingresoValido || !edadValida || !rutValido) {\n    item.json.rut_cliente        = rut;\n    item.json.nombre_cliente     = nombre;\n    item.json.email              = email;\n    item.json.fecha_solicitud    = fecha;\n    item.json.estado_calidad     = \"rechazado\";\n\n    let errores = [];\n    if (!fechaValida)   errores.push(\"Fecha inválida\");\n    if (!emailValido)   errores.push(\"Email inválido\");\n    if (!montoValido)   errores.push(\"Monto inválido (debe ser >0 y ≤50.000.000)\");\n    if (!ingresoValido) errores.push(\"Ingreso no positivo\");\n    if (!edadValida)    errores.push(`Edad fuera de rango legal [18-75]: ${edad}`);\n    if (!rutValido)     errores.push(\"RUT vacío\");\n\n    item.json.observacion = errores.join(\" | \");\n    return item;\n  }\n\n  // ETAPA 4 (prep): TRANSFORMACIÓN FINAL\n  // Calcula cuota estimada = monto / 24 meses\n  // \n  \n  // Si alguna validación falla -> rechazado\n    if (!fechaValida || !emailValido || !montoValido || !ingresoValido || !edadValida || !rutValido) {\n        item.json.rut_cliente     = rut;\n        item.json.nombre_cliente  = nombre;\n        item.json.email           = email;\n        item.json.fecha_solicitud = fecha;\n        item.json.monto_solicitado = monto;\n        item.json.estado_calidad   = \"rechazado\"; // <- IMPORTANTE\n        item.json.observacion     = errores.join(\" | \");\n    } else {\n        // ETAPA 4: Si todo está OK, calculamos valores finales y marcamos como válido\n        item.json.rut_cliente      = rut;\n        item.json.nombre_cliente   = nombre;\n        item.json.email            = email;\n        item.json.fecha_solicitud  = fecha;\n        item.json.monto_solicitado = monto;\n        item.json.ingreso_mensual  = ingreso;\n        item.json.edad             = edad;\n        item.json.total_cuota      = parseFloat((monto / 24).toFixed(0));\n        item.json.estado_calidad   = \"valido\";    // <- IMPORTANTE\n        item.json.observacion      = \"\";\n    }\n\n    return item;\n});"
+      },
+      "id": "d8818c3d-658e-4e4d-a4d4-c3193cf58d0f",
+      "name": "Transformación y Validación",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        288,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.estado_calidad }}",
+              "value2": "valido"
+            }
+          ]
+        }
+      },
+      "id": "59a01742-77ec-49d0-bcb8-91961552f6e4",
+      "name": "Validar Datos",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        576,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": "solicitudes_validadas",
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "rut_cliente",
+              "value": "={{ $json.rut_cliente }}"
+            },
+            {
+              "column": "nombre_cliente",
+              "value": "={{ $json.nombre_cliente }}"
+            },
+            {
+              "column": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "column": "fecha_solicitud",
+              "value": "={{ $json.fecha_solicitud }}"
+            },
+            {
+              "column": "monto_solicitado",
+              "value": "={{ $json.monto_solicitado }}"
+            },
+            {
+              "column": "edad",
+              "value": "={{ $json.edad }}"
+            },
+            {
+              "column": "region",
+              "value": "={{ $json.region }}"
+            },
+            {
+              "column": "total_cuota",
+              "value": "={{ $json.total_cuota }}"
+            },
+            {
+              "column": "estado_calidad",
+              "value": "={{ $json.estado_calidad }}"
+            },
+            {
+              "column": "ingreso_mensual",
+              "value": "={{ $json.ingreso_mensual }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "462f7da0-75d2-48c1-be98-246157c8e6aa",
+      "name": "Insertar en solicitudes_validadas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        976,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "b3KZEYueWyMyS0ye",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": "solicitudes_rechazadas",
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "rut_cliente",
+              "value": "={{ $json.rut_cliente }}"
+            },
+            {
+              "column": "nombre_cliente",
+              "value": "={{ $json.nombre_cliente }}"
+            },
+            {
+              "column": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "column": "fecha_solicitud",
+              "value": "={{ $json.fecha_solicitud }}"
+            },
+            {
+              "column": "monto_solicitado",
+              "value": "={{ $json.monto_solicitado_clp }}"
+            },
+            {
+              "column": "ingreso_mensual",
+              "value": "={{ $json.ingreso_mensual_clp }}"
+            },
+            {
+              "column": "region",
+              "value": "={{ $json.region }}"
+            },
+            {
+              "column": "estado_calidad",
+              "value": "={{ $json.estado_calidad }}"
+            },
+            {
+              "column": "fuente",
+              "value": "={{ $json.canal_origen }}"
+            },
+            {
+              "column": "observacion",
+              "value": "={{ $json.observacion }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3d233a81-24cb-4f00-b38d-f828caa781be",
+      "name": "Insertar en solicitudes_rechazadas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        944,
+        496
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "b3KZEYueWyMyS0ye",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fileFormat": "xlsx",
+        "options": {
+          "headerRow": true,
+          "sheetName": "solicitudes"
+        }
+      },
+      "id": "c4bb0db4-9161-428e-bcb3-c43ebebbed58",
+      "name": "Parsear Excel → Registros JSON",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        32,
+        320
+      ],
+      "notes": "Convierte el binario del Excel en registros JSON individuales. Cada fila del Excel se transforma en un item separado con los campos del esquema SoluFin. El nodo anterior (Read File) entrega el binario en la propiedad 'data'."
+    },
+    {
+      "parameters": {
+        "url": "https://docs.google.com/uc?export=download&id=1LX4rAnQNYlrT4bYVqi7Z-h9Q2UGov0u-",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -192,
+        320
+      ],
+      "id": "abfa0eec-4de3-436f-b9d6-53ddff79008b",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Transformación y Validación": {
+      "main": [
+        [
+          {
+            "node": "Validar Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Datos": {
+      "main": [
+        [
+          {
+            "node": "Insertar en solicitudes_validadas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insertar en solicitudes_rechazadas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Parsear Excel → Registros JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear Excel → Registros JSON": {
+      "main": [
+        [
+          {
+            "node": "Transformación y Validación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0d2ebd39-3681-4f56-9014-5519cb9508a3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "76f69fa19f0f67406fa5a8b84898ab9c6ba9f68e08549cf40d831e4e2350c812"
+  },
+  "id": "ej85VlxEhzYvCasB",
+  "tags": []
+}
